@@ -42,7 +42,7 @@ def main():
 
     """
     # 1) Cria pasta de figuras
-    normalization_type = "minmax"  # "std" ou "minmax"
+    normalization_type = "noNorm"  # ou "std" ou "minmax"
     os.makedirs(f"Figures/{normalization_type}", exist_ok=True)
    
     # 2) Carrega dados
@@ -89,18 +89,16 @@ def main():
         print('\nParâmetros de normalização:')
         print(f'Mínimos (min_vals): {min_vals}')
         print(f'Máximos (max_vals): {max_vals}')
-
- 
-    """
-    Resposta esperada:
-    Parâmetros de normalização:
-    Média (mu): [2000.68085106   3.17021277]
-    Desvio Padrão (sigma): [7.86202619e+02 7.52842809e-01]
-    """
-
+    elif normalization_type == "noNorm":
+        # Se não houver normalização, apenas adicione uma coluna de 1s para o termo de bias (intercepto)
+        X_b = np.column_stack((np.ones((m, 1)), X))
+        print('\nSem normalização. Apenas adicionando bias.')
+        print('Parâmetros de normalização: Nenhum.')
+    else:
+        raise ValueError("Tipo de normalização inválido. Use 'std', 'minmax' ou 'noNorm'.")
     # 4) Gradient Descent Multivariado
-    alpha = 0.01
-    num_iters = 4000
+    alpha = 0.0000000002
+    num_iters = 10000
     # Inicialize theta com zeros (tamanho n+1, onde n é o número de features)
     # O vetor theta terá dimensão (n+1,), onde n é o número de features
     # e 1 é para o termo de bias (intercepto)
@@ -140,7 +138,10 @@ def main():
         example_norm = (example - mu) / sigma
     elif normalization_type == "minmax":
         example_norm = (example - min_vals) / (max_vals - min_vals)
-
+    elif normalization_type == "noNorm":
+        example_norm = example.copy()  # sem normalização, apenas copia o exemplo
+    else:
+        raise ValueError("Tipo de normalização inválido. Use 'std', 'minmax' ou 'noNorm'.")
    
     x_pred = np.concatenate(([1], example_norm)) # adiciona bias
     # Agora podemos fazer a predição usando o vetor theta_gd
@@ -211,8 +212,8 @@ def main():
     plt.title('GD vs Normal Equation')
     plt.legend()
     plt.grid(True)
-    plt.savefig(f'Figures/convergencia_custo_vs_ne_{normalization_type}.png', dpi=300, bbox_inches='tight')
-    plt.savefig(f'Figures/convergencia_custo_vs_ne_{normalization_type}.svg', format='svg', bbox_inches='tight')
+    plt.savefig(f'Figures/{normalization_type}/convergencia_custo_vs_ne_{normalization_type}.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'Figures/{normalization_type}/convergencia_custo_vs_ne_{normalization_type}.svg', format='svg', bbox_inches='tight')
     plt.show()
 
     # -------------- Visualizações 3D / Contorno para multivariada ----------------------------
@@ -233,7 +234,8 @@ def main():
     elif normalization_type == "minmax":
         theta_ne_norm[1:] = theta_ne[1:] / (max_vals - min_vals)
         theta_ne_norm[0] = theta_ne[0] - np.sum((theta_ne[1:] * min_vals) / (max_vals - min_vals))
-
+    elif normalization_type == "noNorm":
+        theta_ne_norm = theta_ne.copy()
     # ------------------------------------------------------------------
     # 7) Contorno J(θ1, θ2) (θ0 fixo em θ_gd[0]). Malha de custo centrada no ótimo
     t1_hist, t2_hist = theta_history[:, 1], theta_history[:, 2]
@@ -263,7 +265,7 @@ def main():
     ax.set_title("Superfície J(θ1, θ2)")
     ax.view_init(elev=30, azim=-60)
     ax.legend()
-    fig.savefig(f"Figures/superficie_GD_vs_NE_{normalization_type}.png", dpi=300)
+    fig.savefig(f"Figures/{normalization_type}/superficie_GD_vs_NE_{normalization_type}.png", dpi=300)
 
     # --------------------------------------------------------------
     # 8a) Contorno J(θ1, θ2) + trajetória GD + NE (normalizado)
@@ -277,7 +279,7 @@ def main():
     plt.scatter(theta_ne_norm[1], theta_ne_norm[2], s=80, marker="x", color="black", label="NE (norm)")
     plt.xlabel(r"$\theta_1$"); plt.ylabel(r"$\theta_2$")
     plt.title("Contorno J(θ1, θ2)"); plt.legend()
-    plt.savefig(f"Figures/contorno_GD_vs_NE_{normalization_type}.png", dpi=300)
+    plt.savefig(f"Figures/{normalization_type}/contorno_GD_vs_NE_{normalization_type}.png", dpi=300)
     plt.show()
 
     # ------------------------------------------------------------------
@@ -307,6 +309,11 @@ def main():
         theta_gd_orig = np.zeros_like(theta_ne)
         theta_gd_orig[1:] = theta_gd[1:] * (max_vals - min_vals)  # coeficientes revertidos
         theta_gd_orig[0] = theta_gd[0] - np.sum(min_vals * theta_gd[1:])  # ajuste do termo de bias (intercepto)
+    
+    elif normalization_type == "noNorm":
+        theta_gd_orig = theta_gd.copy()  # ajuste para noNorm
+        theta_ne_norm = theta_ne.copy()  # ajuste para noNorm
+
     else:
         raise ValueError("Tipo de normalização inválido. Use 'std' ou 'minmax'.")
    # intercepto
@@ -330,7 +337,7 @@ def main():
     ]
     ax2.legend(handles=handles)
     fig2.tight_layout()
-    fig2.savefig("Figures/ajuste_regressao_multivariada.png", dpi=300)
+    fig2.savefig(f"Figures/{normalization_type}/ajuste_regressao_multivariada.png", dpi=300)
     plt.show()
 
 if __name__ == '__main__':
